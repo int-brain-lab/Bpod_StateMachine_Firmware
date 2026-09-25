@@ -1452,8 +1452,8 @@ void handler() { // This is the timer handler function, which is called every (t
 
       #if MACHINE_TYPE == 4 
         // Determine if an analog input threshold was crossed
-        Ev = maxSerialEvents;
         for (int i = 0; i < nFlexIO; i++) {
+         Ev = maxSerialEvents + (i*2); // Each Flex I/O channel has 2 event slots, whatever its type
          if (flexIOChannelType[i] == 2) {
             if (flexIO_updateAIflag) {
               uint16_t thisAnalogVal = FlexIO.adcReadout[i];
