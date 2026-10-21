@@ -1647,11 +1647,8 @@ void handler() { // This is the timer handler function, which is called every (t
         Ev++;
       }
       
-      // Determine if a state timer expired. Tup is added to the event list last (lowest priority), but counted by global counters below.
-      TimeFromStart = CurrentTime - StateStartTime;
-      boolean stateTimerExpired = (TimeFromStart >= StateTimers[CurrentState]) && (MeaningfulStateTimer == true);
-      // Determine if a global event counter threshold was exceeded. First add all threshold events, so that counters attached to them count them in this cycle
       Ev = GlobalCounterPos;
+      // Determine if a global event counter threshold was exceeded
       for (int x = 0; x < nGlobalCountersUsed; x++) {
         if (GlobalCounterAttachedEvents[x] < 254) {
           // Check for and handle threshold crossing
@@ -1662,7 +1659,16 @@ void handler() { // This is the timer handler function, which is called every (t
         }
         Ev++;
       }
-      // Add current events to count (Crossing triggered on next cycle)
+      // Determine if a state timer expired
+      Ev = TupPos;
+      TimeFromStart = CurrentTime - StateStartTime;
+      if ((TimeFromStart >= StateTimers[CurrentState]) && (MeaningfulStateTimer == true)) {
+        CurrentEvent[nCurrentEvents] = Ev; nCurrentEvents++;
+      }
+      if (nCurrentEvents > maxCurrentEvents) { // Drop events beyond maxCurrentEvents
+        nCurrentEvents = maxCurrentEvents;
+      }
+      // Add current events to global counts (Crossing triggered on next cycle). Counted last, so that counters see exactly the events that are reported, including Tup and all threshold events
       for (int x = 0; x < nGlobalCountersUsed; x++) {
         if (GlobalCounterAttachedEvents[x] < 254) {
           for (int i = 0; i < nCurrentEvents; i++) {
@@ -1670,16 +1676,7 @@ void handler() { // This is the timer handler function, which is called every (t
               GlobalCounterCounts[x] = GlobalCounterCounts[x] + 1;
             }
           }
-          if (stateTimerExpired && (GlobalCounterAttachedEvents[x] == TupPos)) {
-            GlobalCounterCounts[x] = GlobalCounterCounts[x] + 1;
-          }
         }
-      }
-      if (stateTimerExpired) {
-        CurrentEvent[nCurrentEvents] = TupPos; nCurrentEvents++;
-      }
-      if (nCurrentEvents > maxCurrentEvents) { // Drop events beyond maxCurrentEvents
-        nCurrentEvents = maxCurrentEvents;
       }
       // Now determine if a state transition should occur. The first event linked to a state transition takes priority.
       byte StateTransitionFound = 0; int i = 0; int CurrentColumn = 0;
