@@ -1647,8 +1647,11 @@ void handler() { // This is the timer handler function, which is called every (t
         Ev++;
       }
       
+      // Determine if a state timer expired. Tup is added to the event list last (lowest priority), but counted by global counters below.
+      TimeFromStart = CurrentTime - StateStartTime;
+      boolean stateTimerExpired = (TimeFromStart >= StateTimers[CurrentState]) && (MeaningfulStateTimer == true);
+      // Determine if a global event counter threshold was exceeded. First add all threshold events, so that counters attached to them count them in this cycle
       Ev = GlobalCounterPos;
-      // Determine if a global event counter threshold was exceeded
       for (int x = 0; x < nGlobalCountersUsed; x++) {
         if (GlobalCounterAttachedEvents[x] < 254) {
           // Check for and handle threshold crossing
@@ -1656,20 +1659,24 @@ void handler() { // This is the timer handler function, which is called every (t
             CurrentEvent[nCurrentEvents] = Ev; nCurrentEvents++;
             GlobalCounterHandled[x] = true;
           }
-          // Add current event to count (Crossing triggered on next cycle)
+        }
+        Ev++;
+      }
+      // Add current events to count (Crossing triggered on next cycle)
+      for (int x = 0; x < nGlobalCountersUsed; x++) {
+        if (GlobalCounterAttachedEvents[x] < 254) {
           for (int i = 0; i < nCurrentEvents; i++) {
             if (CurrentEvent[i] == GlobalCounterAttachedEvents[x]) {
               GlobalCounterCounts[x] = GlobalCounterCounts[x] + 1;
             }
           }
+          if (stateTimerExpired && (GlobalCounterAttachedEvents[x] == TupPos)) {
+            GlobalCounterCounts[x] = GlobalCounterCounts[x] + 1;
+          }
         }
-        Ev++;
       }
-      // Determine if a state timer expired
-      Ev = TupPos;
-      TimeFromStart = CurrentTime - StateStartTime;
-      if ((TimeFromStart >= StateTimers[CurrentState]) && (MeaningfulStateTimer == true)) {
-        CurrentEvent[nCurrentEvents] = Ev; nCurrentEvents++;
+      if (stateTimerExpired) {
+        CurrentEvent[nCurrentEvents] = TupPos; nCurrentEvents++;
       }
       if (nCurrentEvents > maxCurrentEvents) { // Drop events beyond maxCurrentEvents
         nCurrentEvents = maxCurrentEvents;
