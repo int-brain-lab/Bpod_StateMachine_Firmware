@@ -3006,7 +3006,7 @@ void startSM() {
     inputOverrideState[i] = false;
   }
   #if MACHINE_TYPE == 4
-    for (int i = FlexInputPos; i < FlexInputPos+nFlexIO; i++) { // Todo: Mod to read any digital inputs
+    for (int i = FlexInputPos; i < FlexInputPos+nFlexIO; i++) { // Flex digital inputs are read in the trial's first cycle (see handler())
       inputState[i] = logicLow[i];
       lastInputState[i] = logicLow[i];
     }
