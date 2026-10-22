@@ -428,7 +428,8 @@ boolean UARTrelayMode[nSerialChannels] = {false};
 byte nModuleEvents[nSerialChannels] = {0}; // Stores number of behavior events assigned to each serial module (15 by default)
 uint16_t stateMatrixNBytes = 0; // Number of bytes in the state matrix about to be transmitted
 boolean using255BackSignal = 0; // If enabled, only 254 states can be used and going to "state 255" returns system to the previous state
-boolean newUsing255BackSignal = 0; // using255BackSignal of the most recently received state matrix; copied in loadStateMatrix() so that a running trial is unaffected
+boolean using254SelfSignal = 0; // If enabled, going to "state 254" re-enters the current state (restarting its timer and applying its outputs again). Only 253 states can then be used
+byte newStateMatrixFlags = 0; // Header flags of the most recently accepted state matrix (bit 0: '>back', bit 1: '>self'); applied in loadStateMatrix() so that a running trial is unaffected
 
 
 //////////////////////////////////
@@ -1327,21 +1328,21 @@ void handler() { // This is the timer handler function, which is called every (t
         smaTransmissionConfirmed = false;
         PC.readByteArray(typeBuffer.byteArray, 4);
         RunStateMatrixASAP = typeBuffer.byteArray[0];
-        byte receivedBackSignal = typeBuffer.byteArray[1]; // Stored below only if the state matrix is accepted, so that a rejected one cannot change the flag of a state matrix waiting to be loaded
+        byte receivedFlags = typeBuffer.byteArray[1]; // Bit 0: '>back' is used (state 255), bit 1: '>self' is used (state 254). Stored below only if the state matrix is accepted, so that a rejected one cannot change the flags of a state matrix waiting to be loaded
         typeBuffer.byteArray[0] = typeBuffer.byteArray[2];
         typeBuffer.byteArray[1] = typeBuffer.byteArray[3];
         stateMatrixNBytes = typeBuffer.uint16;
         if (stateMatrixNBytes < StateMatrixBufferSize) {
           if (RunningStateMatrix) {
             #if MACHINE_TYPE > 1
-              newUsing255BackSignal = receivedBackSignal;
+              newStateMatrixFlags = receivedFlags;
               nSMBytesRead = 0;
               smaPending = true;
             #else
               PC.writeByte(0);
             #endif
           } else {
-            newUsing255BackSignal = receivedBackSignal;
+            newStateMatrixFlags = receivedFlags;
             #if TEENSY_VERSION == 4
               nSMBytesRead = 0;
               smaPending = true;
@@ -1758,6 +1759,8 @@ void handler() { // This is the timer handler function, which is called every (t
             CurrentStateTEMP = CurrentState;
             CurrentState = previousState;
             previousState = CurrentStateTEMP;
+          } else if (using254SelfSignal && (NewState == 254)) {
+            // Re-enter the current state. previousState is kept, so that '>back' still returns to the state before it
           } else {
             previousState = CurrentState;
             CurrentState = NewState;
@@ -2599,7 +2602,8 @@ void clearSerialBuffers() {
 }
 
 void loadStateMatrix() { // Loads a state matrix from the serial buffer into the relevant local variables
-  using255BackSignal = newUsing255BackSignal;
+  using255BackSignal = bitRead(newStateMatrixFlags, 0);
+  using254SelfSignal = bitRead(newStateMatrixFlags, 1);
   #if MACHINE_TYPE > 1
     nStates = StateMatrixBuffer[0];
     nGlobalTimersUsed = StateMatrixBuffer[1];
