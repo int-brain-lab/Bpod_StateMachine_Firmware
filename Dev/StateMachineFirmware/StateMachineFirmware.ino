@@ -2166,6 +2166,9 @@ void resetOutputs() {
         pwmWrite(OutputCh[i], 0); 
         outputOverrideState[i] = 0; 
       break;
+      case 'F': // Flex I/O: values are reset below
+        outputOverrideState[i] = 0;
+      break;
     }
   }
   #if MACHINE_TYPE == 4
