@@ -1322,24 +1322,26 @@ void handler() { // This is the timer handler function, which is called every (t
             SoftEvent1 = 255; // 255 = No Event
           }
       break;
-      case 'C': // Get new compressed state matrix from MATLAB/Python 
+      case 'C': { // Get new compressed state matrix from MATLAB/Python 
         newSMATransmissionStarted = true;
         smaTransmissionConfirmed = false;
         PC.readByteArray(typeBuffer.byteArray, 4);
         RunStateMatrixASAP = typeBuffer.byteArray[0];
-        newUsing255BackSignal = typeBuffer.byteArray[1];
+        byte receivedBackSignal = typeBuffer.byteArray[1]; // Stored below only if the state matrix is accepted, so that a rejected one cannot change the flag of a state matrix waiting to be loaded
         typeBuffer.byteArray[0] = typeBuffer.byteArray[2];
         typeBuffer.byteArray[1] = typeBuffer.byteArray[3];
         stateMatrixNBytes = typeBuffer.uint16;
         if (stateMatrixNBytes < StateMatrixBufferSize) {
           if (RunningStateMatrix) {
             #if MACHINE_TYPE > 1
+              newUsing255BackSignal = receivedBackSignal;
               nSMBytesRead = 0;
               smaPending = true;
             #else
               PC.writeByte(0);
             #endif
           } else {
+            newUsing255BackSignal = receivedBackSignal;
             #if TEENSY_VERSION == 4
               nSMBytesRead = 0;
               smaPending = true;
@@ -1356,7 +1358,7 @@ void handler() { // This is the timer handler function, which is called every (t
             #endif
           }
         }
-      break;
+      } break;
       case 'R':  // Run State Machine
         startFlag = true;
       break;
