@@ -857,6 +857,9 @@ void setup() {
     Timer3.attachInterrupt(handler); // Timer3 is Arduino Due's hardware timer, which will trigger the function "handler" precisely every (timerPeriod) us
     Timer3.start(timerPeriod); // Start HW timer
   #else
+    #if defined(__IMXRT1062__)
+      NVIC_SET_PRIORITY(IRQ_USB1, 112); // Let USB interrupts preempt the timer handler (as on Teensy 3.6), so that blocking reads in handler() can receive further bytes
+    #endif
     hardwareTimer.begin(handler, timerPeriod); // hardwareTimer is Teensy 3.6's hardware timer
   #endif
 }
